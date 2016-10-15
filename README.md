@@ -1,2 +1,2 @@
 # tsneNet
-transferring neural network knowledge with t-sne regularize
+Transferring neural network knowledge with t-sne regularilizer.
