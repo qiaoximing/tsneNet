@@ -39,7 +39,7 @@ Following the idea of t-SNE, we design a loss function representing the differen
 
 For demonstration, assuming there is a 5-hidden-layer teacher network and a 5-hidden-layer student network, both of them use MNIST dataset as input. Noticed that the size of the student network is much smaller (8-16-32 vs 32-64-512). Batch size is set to 100.
 
-![network structure](./tsneNet-structure.png)
+![network structure](https://github.com/qiaoximing/tsneNet/blob/master/figures/tsneNet-structure.png)
 
 The teacher network is pretrained and its value won't change during the training of the student. Every new input batch goes through all hidden layers in teacher network and produces 100 points in the 512-dimension feature space. Then by calculating each $p_{ij}$, we get the 100*100 similarity matrix P of those 100 points. Following the same routine, we get the similarity matrix Q, and at last, the tsne-loss. Computation details are listed below.
 
@@ -131,13 +131,13 @@ Parameters $\alpha$ and $\beta$ can affect the training result greatly.
 
 When $\alpha$ is fixed, different $\beta$ leads to different final error rate. 
 
-![different beta](./different-beta.png)
+![different beta](https://github.com/qiaoximing/tsneNet/blob/master/figures/different-beta.png)
 
 In the above figure, $\alpha$ is set to $+\infty$, the bold straight line is the error rate of the teacher network, and the bold curve is the error rate of the baseline student network ($\beta=0$). When $\beta$ is very small ($\beta=0.02$), the t-SNE regularization has some effect but not enough. When $\beta$ is between 0.05 and 0.5, the result is good. Especially when $\beta=0.1$, the difference of error rate between student and teacher networks drops from 1.4% to 0.7%, achieves a 50% reduce. When $\beta$ becomes larger, the regularization may overwhelm the normal training. Given the fixed $\alpha$, we can find the optimal $\beta$.
 
 Because the cross-entropy loss and tsne-loss do not converge to the same point, $\beta$ need to be carefully selected to get the best result. As shown in the experiment, the final error rate changes little when $\beta$ stays in a relatively large area (0.05 to 0.5), so it is not hard to get the optimal $\beta$.
 
-![different alpha](./different-alpha.png)
+![different alpha](https://github.com/qiaoximing/tsneNet/blob/master/figures/different-alpha.png)
 
 In the above figure, each curve represents the error rate with the optimal $\beta$. We further find the optimal error rate will increase when $\alpha$ is set to a lower value.  $\alpha=+\infty$ is the optimal choice of $\alpha$.
 
