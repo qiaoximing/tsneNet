@@ -1,6 +1,7 @@
 # tsneNet
 
 Transferring neural network knowledge with t-sne regularilizer.
+
 Check [README.pdf](https://github.com/qiaoximing/tsneNet/edit/master/README.pdf) if Math Equations are not rendered.
 
 ## Overview
