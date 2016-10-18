@@ -37,6 +37,14 @@ The t-SNE algorithm [1] is a widespread solution for data visualization, which c
 
 Following the idea of t-SNE, we design a loss function representing the difference of the data structures in two feature spaces. By simply adding that new loss function to the original supervised learning loss function (typically a cross-entropy loss) and optimizing them together, we can get a much better result. The new loss function (we call it tsne-loss) acts as a regularizer, it can help the student network mimic the data structure of the teacher network, along with the regular supervised training process.
 
+## Related work
+
+Hinton et al. (2015) [2] shows another way of knowledge transfer between neural networks. Normally, neural networks are trained by human annotated labels. The labels act as one-hot targets, which contain a single 1 and a whole lot of 0's. In that paper, apart from the normal one-hot targets, a new "soft targets" is declared. The soft targets is a softened version of probability distribution predicted by a neural network. It is produced by adding a *temperature* on the softmax layer. Before training a student network, a teacher network will be used to produce the soft targets, and then the original one-hot targets are partially replaced by the soft targets (added together with weights). As a result, the student network learns from both the ground truth labels and the soft targets. Soft targets contain knowledge of the teachers network and can increase the performance of the student network greatly.
+
+However, server limits are in that method. Because the knowledge transfer is done by utilizing the final output layer, it can not work when the labels do not match. For example, the teacher network is trained on imageNet, and the goal of the student network is to distinguish different flowers. Otherwise, when the number of labels are too small (for example a yes-or-no problem), the effect of soft targets are minimized.
+
+We circumvent these restrictions by learning directly from the feature space. The feature space contains a full representation of the images, which is not limited by output labels. Consequently, knowledge transfer between different domains becomes much easier. Finally, our method also makes a inspiring expansion of the usage of t-SNE algorithm.
+
 ## Implementation
 
 For demonstration, assuming there is a 5-hidden-layer teacher network and a 5-hidden-layer student network, both of them use MNIST dataset as input. Noticed that the size of the student network is much smaller (8-16-32 vs 32-64-512). Batch size is set to 100.
@@ -45,7 +53,9 @@ For demonstration, assuming there is a 5-hidden-layer teacher network and a 5-hi
 
 The teacher network is pretrained and its value won't change during the training of the student. Every new input batch goes through all hidden layers in teacher network and produces 100 points in the 512-dimension feature space. Then by calculating each $p_{ij}$, we get the 100*100 similarity matrix P of those 100 points. Following the same routine, we get the similarity matrix Q, and at last, the tsne-loss. Computation details are listed below.
 
-- Similarity matrix P:
+- Similarity matrix P: 
+
+**(Check [README.pdf](https://github.com/qiaoximing/tsneNet/edit/master/README.pdf) if Math Equations are not rendered.)**
 
 Let vector $x_i$ denote the position of the $i$th datapoint in the 512-dimension feature space,
 
@@ -149,18 +159,19 @@ The reason of using 2-dimensional student-t distribution in normal t-SNE algorit
 
 - [x] Add documentations
 - [x] Update the figures
-- [ ] **Add Related Work**
+- [x] Add Related Work
 - [ ] Compare different batch sizes
-- [ ] Apply on bigger dataset (selected categories of imageNet)
+- [ ] Apply on bigger dataset (imageNet)
 - [ ] Compare different sizes of student networks
 - [ ] Track computation cost / memory reduction with different fixed accuracies
-- [ ] Combine with the "Distillation" method
+- [ ] Combine / compare with the Hinton's soft target method
 - [ ] Try to allow the teacher network enhance itself
 
 ## References
 
-[1] van der Maaten, L. and Hinton, G. E. (2008). Visualizing data using
-t-SNE. J. Machine Learning Res., 9.
+[1] Maaten, Laurens van der, and Geoffrey Hinton. "Visualizing data using t-SNE."*Journal of Machine Learning Research* 9.Nov (2008): 2579-2605.
+
+[2] Hinton, Geoffrey, Oriol Vinyals, and Jeff Dean. "Distilling the knowledge in a neural network." *arXiv preprint arXiv:1503.02531* (2015).
 
 ## Thanks
 
