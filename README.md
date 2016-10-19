@@ -11,7 +11,7 @@ In order to achieve better performance of neural networks in resource limited en
 ## Run the code
 
 1. Install tensorflow on python3
-2. python3 tsneNet.py
+2. `python3 tsneNet.py`
 
 ## Introduction
 
