@@ -16,7 +16,6 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 import tsne3
 
-mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 IMAGE_SIZE = 28
 NUM_CHANNELS = 1
 NUM_LABELS = 10
@@ -155,7 +154,7 @@ def teacher_model(data, labels):
     return train_step, loss, logits, hidden
 
 
-def train_or_load_teacher(sess, data, labels, train_step, loss, error):
+def train_or_load_teacher(sess, mnist, data, labels, train_step, loss, error):
     """Train or load teacher network
 
     Train a teacher network and save to ./teacher.ckpy,
@@ -287,6 +286,9 @@ def main():
     After that, it starts to train the student network.
 
     """
+    # load mnist data
+    mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+
     # set placeholders for input data
     data = tf.placeholder("float", shape=[
         None, IMAGE_SIZE * IMAGE_SIZE * NUM_CHANNELS])
@@ -303,7 +305,8 @@ def main():
         # train or load the teacher network
         train_step, loss, logits, hidden = teacher_model(data, labels)
         error = get_error_rate(logits, labels)
-        train_or_load_teacher(sess, data, labels, train_step, loss, error)
+        train_or_load_teacher(sess, mnist, data, labels, train_step, loss,
+                              error)
 
         # calc hidden-layer-value of training data, using teacher network
         teacher_hidden = sess.run(

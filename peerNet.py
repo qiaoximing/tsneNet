@@ -99,7 +99,7 @@ def teacher_model(data, labels):
     # loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
     #     logits_drop, labels))
     gamma = 0
-    loss = (gamma * correct1 * (1 - correct2) * (-tf.reduce_sum(tf.stop_gradient(soft1) * tf.log(soft2))) + 
+    loss = tf.reduce_mean(gamma * correct1 * (1 - correct2) * (-tf.reduce_sum(tf.stop_gradient(soft1) * tf.log(soft2))) + 
         gamma * (1 - correct1) * correct2 * (-tf.reduce_sum(tf.stop_gradient(soft2) * tf.log(soft1))) + 
         (-tf.reduce_sum(labels * tf.log(soft1)) - tf.reduce_sum(labels * tf.log(soft2))))
 
@@ -131,7 +131,7 @@ def train_teacher(sess, data, labels, train_step, loss, error):
 
         # validate each 100 steps
         if i % 100 == 0:
-            val_error = sess.run( error, feed_dict={
+            val_error = sess.run(error, feed_dict={
                 data:mnist.validation.images,
                 labels:mnist.validation.labels})
             print("step %d, loss %.3f, train error %.1f, val error %.1f"
