@@ -84,26 +84,31 @@ def teacher_model(data, labels):
     logits = tf.matmul(hidden, fc2_weights) + fc2_biases
 
     # dropout when training
-    T = 1
+    T = 20
+    e = 1e-12
     hidden1 = tf.nn.dropout(hidden, 0.5, seed=1)
     logits1 = tf.matmul(hidden1, fc2_weights) + fc2_biases
     correct1 = tf.cast(tf.equal(tf.argmax(logits1, 1), 
                                 tf.argmax(labels, 1)), "float")
-    soft1 = tf.exp(logits1 / T) / tf.reduce_sum(tf.exp(logits1 / T))
+    soft1 = e + tf.exp(logits1) / tf.reduce_sum(tf.exp(logits1))
+    soft1T = e + tf.exp(logits1 / T) / tf.reduce_sum(tf.exp(logits1 / T))
     hidden2 = tf.nn.dropout(hidden, 0.5, seed=100)
     logits2 = tf.matmul(hidden2, fc2_weights) + fc2_biases
     correct2 = tf.cast(tf.equal(tf.argmax(logits2, 1), 
                                 tf.argmax(labels, 1)), "float")
-    soft2 = tf.exp(logits2 / T) / tf.reduce_sum(tf.exp(logits2 / T))
+    soft2 = e + tf.exp(logits2) / tf.reduce_sum(tf.exp(logits2))
+    soft2T = e + tf.exp(logits2 / T) / tf.reduce_sum(tf.exp(logits2 / T))
 
     # loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
     #     logits_drop, labels))
     gamma = 0
-    loss = tf.reduce_mean(gamma * correct1 * (1 - correct2) * (-tf.reduce_sum(tf.stop_gradient(soft1) * tf.log(soft2))) + 
-        gamma * (1 - correct1) * correct2 * (-tf.reduce_sum(tf.stop_gradient(soft2) * tf.log(soft1))) + 
-        (-tf.reduce_sum(labels * tf.log(soft1)) - tf.reduce_sum(labels * tf.log(soft2))))
+    loss = tf.reduce_mean(gamma * correct1 * (1 - correct2) * (-tf.reduce_sum(tf.stop_gradient(soft1T) * tf.log(soft2T))) + 
+        gamma * (1 - correct1) * correct2 * (-tf.reduce_sum(tf.stop_gradient(soft2T) * tf.log(soft1T))) + 
+        (1 - 0) * (1 - 0) * (-tf.reduce_sum(labels * tf.log(soft1)) - tf.reduce_sum(labels * tf.log(soft2))))
+    # loss = tf.reduce_mean((-tf.reduce_sum(labels * tf.log(soft1)) - tf.reduce_sum(labels * tf.log(soft2))))
+    # loss = tf.reduce_mean((-tf.reduce_sum(labels * tf.log(soft1))))
 
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
+    train_step = tf.train.AdamOptimizer(3e-3).minimize(loss)
 
     return train_step, loss, logits, hidden
 
@@ -124,7 +129,7 @@ def train_teacher(sess, data, labels, train_step, loss, error):
 
     for i in range(10000):
         # train on batches
-        batch = mnist.train.next_batch(50)
+        batch = mnist.train.next_batch(500)
         _, train_loss, train_error = sess.run(
             [train_step, loss, error],
             feed_dict={data:batch[0], labels:batch[1]})
@@ -142,17 +147,20 @@ def main():
     """
 
     """
-    # set placeholders for input data
-    data = tf.placeholder("float", shape=[
-        None, IMAGE_SIZE * IMAGE_SIZE * NUM_CHANNELS])
-    labels = tf.placeholder("float", shape=[None, NUM_LABELS])
 
+    # sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
     sess = tf.Session()
 
     # train or load the teacher network
-    train_step, loss, logits, hidden = teacher_model(data, labels)
-    error = get_error_rate(logits, labels)
-    train_teacher(sess, data, labels, train_step, loss, error)
+    with tf.device('/gpu:1'):
+        # set placeholders for input data
+        data = tf.placeholder("float", shape=[
+            None, IMAGE_SIZE * IMAGE_SIZE * NUM_CHANNELS])
+        labels = tf.placeholder("float", shape=[None, NUM_LABELS])
+
+        train_step, loss, logits, hidden = teacher_model(data, labels)
+        error = get_error_rate(logits, labels)
+        train_teacher(sess, data, labels, train_step, loss, error)
 
     sess.close()
 

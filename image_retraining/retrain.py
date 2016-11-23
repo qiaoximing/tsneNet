@@ -85,7 +85,7 @@ from tensorflow.python.platform import gfile
 FLAGS = tf.app.flags.FLAGS
 
 # Input and output file flags.
-tf.app.flags.DEFINE_string('image_dir', '',
+tf.app.flags.DEFINE_string('image_dir', './image_dir',
                            """Path to folders of labeled images.""")
 tf.app.flags.DEFINE_string('output_graph', './tmp/output_graph.pb',
                            """Where to save the trained graph.""")

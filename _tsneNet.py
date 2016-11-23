@@ -16,12 +16,12 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 import tsne3
 
-IMAGE_SIZE = 28
-NUM_CHANNELS = 1
+IMAGE_SIZE = 56
+NUM_CHANNELS = 3
 NUM_LABELS = 3
 
 # Training data size and batch size for the student network
-TRAIN_SIZE = 6000
+TRAIN_SIZE = 3000
 BATCH_SIZE = 100
 
 
@@ -109,46 +109,41 @@ def student_model(data, labels, node_P, dropout=True, alpha=-1, beta=0):
         logits: tensor of predicted logits
 
     """
-    size1 = 8
+    size1 = 16
     size2 = 16
-    size3 = 32
+    size3 = 16
 
     conv1_weights = tf.Variable(tf.truncated_normal(
-        [5, 5, NUM_CHANNELS, size1], stddev=0.1), name="s_conv1_w")
+        [5, 5, NUM_CHANNELS, size1], stddev=0.01), name="s_conv1_w")
     conv1_biases = tf.Variable(tf.zeros([size1]), name="s_conv1_b")
 
     conv2_weights = tf.Variable(tf.truncated_normal(
-        [5, 5, size1, size2], stddev=0.1), name="s_conv2_w")
-    conv2_biases = tf.Variable(tf.constant(0.1, shape=[size2]),
+        [5, 5, size1, size2], stddev=0.01), name="s_conv2_w")
+    conv2_biases = tf.Variable(tf.constant(0.01, shape=[size2]),
                                name="s_conv2_b")
 
     fc1_weights = tf.Variable(tf.truncated_normal(
-        [IMAGE_SIZE // 4 * IMAGE_SIZE // 4 * size2, size3], stddev=0.1),
+        [(IMAGE_SIZE-8) * (IMAGE_SIZE-8) * size2, size3], stddev=0.01),
         name="s_fc1_w")
-    fc1_biases = tf.Variable(tf.constant(0.1, shape=[size3]), name="s_fc1_b")
+    fc1_biases = tf.Variable(tf.constant(0.01, shape=[size3]), name="s_fc1_b")
 
     fc2_weights = tf.Variable(tf.truncated_normal(
-        [size3, NUM_LABELS], stddev=0.1), name="s_fc2_w")
-    fc2_biases = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]),
+        #[size3, NUM_LABELS], stddev=0.01), name="s_fc2_w")
+        [(IMAGE_SIZE-8) * (IMAGE_SIZE-8) * size2, NUM_LABELS], stddev=0.01), name="s_fc2_w")
+    fc2_biases = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]),
                              name="s_fc2_b")
 
-    data = tf.reshape(data, [-1, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS])
-
     conv = tf.nn.conv2d(data, conv1_weights,
-                        strides=[1, 1, 1, 1], padding='SAME')
+                        strides=[1, 1, 1, 1], padding='VALID')
     relu = tf.nn.relu(tf.nn.bias_add(conv, conv1_biases))
-    pool = tf.nn.max_pool(relu, ksize=[1, 2, 2, 1],
-                          strides=[1, 2, 2, 1], padding='SAME')
 
-    conv = tf.nn.conv2d(pool, conv2_weights,
-                        strides=[1, 1, 1, 1], padding='SAME')
+    conv = tf.nn.conv2d(relu, conv2_weights,
+                        strides=[1, 1, 1, 1], padding='VALID')
     relu = tf.nn.relu(tf.nn.bias_add(conv, conv2_biases))
-    pool = tf.nn.max_pool(relu, ksize=[1, 2, 2, 1],
-                          strides=[1, 2, 2, 1], padding='SAME')
 
-    reshape = tf.reshape(pool, [-1, IMAGE_SIZE // 4 * IMAGE_SIZE // 4 * size2])
+    hidden = tf.reshape(relu, [-1, (IMAGE_SIZE-8) * (IMAGE_SIZE-8) * size2])
 
-    hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+    #hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
     logits = tf.matmul(hidden, fc2_weights) + fc2_biases
 
     if dropout:
@@ -163,6 +158,7 @@ def student_model(data, labels, node_P, dropout=True, alpha=-1, beta=0):
     tsne_loss = get_tsne_loss(node_P, hidden, alpha)
 
     train_step = tf.train.AdamOptimizer(5e-4).minimize(loss + beta * tsne_loss)
+    #train_step = tf.train.AdamOptimizer(5e-3).minimize(loss)
 
     return train_step, loss, tsne_loss, logits
 
@@ -177,27 +173,29 @@ def main():
 
     """
     # load image data
+    cache_dir='image_retraining/'
     mnist = {'train':{}, 'validation':{}, 'test':{}}
-    mnist.train.images = np.load('train.images.npy')
-    mnist.train.bottlenecks = np.load('train.bottlenecks.npy')
-    mnist.train.labels = np.load('train.labels.npy')
-    mnist.validation.images = np.load('validation.images.npy')
-    mnist.validation.bottlenecks = np.load('validation.bottlenecks.npy')
-    mnist.validation.labels = np.load('validation.labels.npy')
+    mnist['train']['images'] = np.load(cache_dir+'train.images.npy')/255
+    mnist['train']['bottlenecks'] = np.load(cache_dir+'train.bottlenecks.npy')
+    mnist['train']['labels'] = np.load(cache_dir+'train.labels.npy')
+    mnist['validation']['images'] = np.load(cache_dir+'validation.images.npy')/255
+    mnist['validation']['bottlenecks'] = np.load(cache_dir+'validation.bottlenecks.npy')
+    mnist['validation']['labels'] = np.load(cache_dir+'validation.labels.npy')
+    print(mnist['train']['images'].shape)
 
     # set placeholders for input data
     data = tf.placeholder("float", shape=[
-        None, IMAGE_SIZE * IMAGE_SIZE * NUM_CHANNELS])
+        None, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS])
     labels = tf.placeholder("float", shape=[None, NUM_LABELS])
     node_P = tf.placeholder("float", shape=[BATCH_SIZE, BATCH_SIZE])
 
     # calculate or load P matrices in batches
     P_batch = []
-    filepath = "./P_batch.npy"
+    filepath = "./_P_batch.npy"
 
     if not os.path.isfile(filepath):
 
-        teacher_hidden = mnist.train.bottlenecks[:TRAIN_SIZE]
+        teacher_hidden = mnist['train']['bottlenecks'][:TRAIN_SIZE]
 
         # calc a list of P matrices, each on one batch of hidden-layer-value
         P_batch = []
@@ -216,7 +214,7 @@ def main():
 
     # set student network
     train_step, loss, tsne_loss, logits = student_model(
-        data, labels, node_P, dropout=True, alpha=-1, beta=0.2)
+        data, labels, node_P, dropout=False, alpha=-1, beta=0)
     error = get_error_rate(logits, labels)
 
     # start training
@@ -226,18 +224,22 @@ def main():
         offset = i % (TRAIN_SIZE // BATCH_SIZE)
         _, train_loss, train_tsne_loss, train_error = sess.run(
             [train_step, loss, tsne_loss, error], feed_dict={
-            data:mnist.train.images[
+            data:mnist['train']['images'][
                 offset * BATCH_SIZE:(offset + 1) * BATCH_SIZE],
-            labels:mnist.train.labels[
+            labels:mnist['train']['labels'][
                 offset * BATCH_SIZE:(offset + 1) * BATCH_SIZE],
             node_P:P_batch[offset]})
 
         if i % 100 == 0:
             val_error = sess.run(error, feed_dict={
-                data:mnist.validation.images,
-                labels:mnist.validation.labels})
+                data:mnist['validation']['images'],
+                labels:mnist['validation']['labels']})
             print("step %d, loss %.3f, tsne loss %.2f, train error %.2f, val error %.2f"
                   % (i, train_loss, train_tsne_loss, train_error, val_error))
+            #p = np.random.permutation(len(mnist['train']['images']))
+            #mnist['train']['images'] = mnist['train']['images'][p]
+            #mnist['train']['bottlenecks'] = mnist['train']['bottlenecks'][p]
+            #mnist['train']['labels'] = mnist['train']['labels'][p]
 
 
 if __name__ == "__main__":
